@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuatro Tuner Web App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+        .frequency-display, .note-display {
+            font-size: 2rem;
+            margin: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cuatro Tuner Web App</h1>
+    
+    <!-- Start Button -->
+    <button id="start-button">Start Tuning</button>
+
+    <!-- Display Frequency and Note -->
+    <div class="frequency-display">
+        Frequency: <span id="frequency-value">0</span> Hz
+    </div>
+    <div class="note-display">
+        Note: <span id="note-value">N/A</span>
+    </div>
+
+    <script src="tuner.js"></script>
+</body>
+</html>
