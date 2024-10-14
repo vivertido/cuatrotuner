@@ -3,12 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.2/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script>
     <title>Cuatro Tuner Web App</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+         body {
             text-align: center;
             padding: 50px;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(180deg, #9ab2eb, #151a24); /* Adjust colors and angle */
+        }
+        #page-title{
+            font-size: 2.4rem;
+
         }
         .frequency-display, .note-display {
             font-size: 2rem;
@@ -18,13 +30,30 @@
             padding: 10px 20px;
             font-size: 1.2rem;
         }
+        /* Canvas for needle-style tuner */
+        canvas {
+            margin: 20px auto;
+            display: block;
+            border: 1px solid #ccc;
+        }
+
+        .string-label {
+        font-size: 1.8rem;
+        margin: 0 20px;
+        color: gray;  /* Initially gray */
+    }
+    .string-label.tuned {
+        color: green;  /* Change to green when tuned */
+    }
     </style>
 </head>
 <body>
-    <h1>Cuatro Tuner Web App</h1>
+    <h1 id="page-title">Cuatro Tuner Web App</h1>
     
     <!-- Start Button -->
     <button id="start-button">Start Tuning</button>
+    <button id="stop-button" style="display:none;">Stop Tuning</button>
+
 
     <!-- Display Frequency and Note -->
     <div class="frequency-display">
@@ -33,6 +62,31 @@
     <div class="note-display">
         Note: <span id="note-value">N/A</span>
     </div>
+
+    <canvas id="tuner-canvas" width="400" height="400"></canvas>
+
+<!-- Labels for the cuatro strings -->
+<div id="string-labels" style="margin-top: 20px;">
+    <div>
+        <span id="string-A3" class="string-label">A3</span>
+        <progress id="progress-A3" max="100" value="0" style="width: 200px;"></progress>
+    </div>
+    <div>
+        <span id="string-D4" class="string-label">D4</span>
+        <progress id="progress-D4" max="100" value="0" style="width: 200px;"></progress>
+    </div>
+    <div>
+        <span id="string-F#4" class="string-label">F#4</span>
+        <progress id="progress-F#4" max="100" value="0" style="width: 200px;"></progress>
+    </div>
+    <div>
+        <span id="string-B3" class="string-label">B3</span>
+        <progress id="progress-B3" max="100" value="0" style="width: 200px;"></progress>
+    </div>
+</div>
+
+<audio id="chime-sound" src="assets/chime.mp3" preload="auto"></audio>
+
 
     <script src="tuner.js"></script>
 </body>

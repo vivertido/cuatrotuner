@@ -1,5 +1,6 @@
 // Select the Start button and output elements
 const startButton = document.getElementById('start-button');
+const stopButton = document.getElementById('stop-button');
 const frequencyDisplay = document.getElementById('frequency-value');
 const noteDisplay = document.getElementById('note-value');
 
@@ -15,31 +16,147 @@ let isTuning = false;
 const bufferLength = 2048;  // FFT buffer size
 const dataArray = new Float32Array(bufferLength);  // Create a buffer to hold audio data
 
+// Variable to store the last valid frequency and target frequency
+let lastValidFrequency = null;
+let lastValidTargetFrequency = null;
+
+const canvas = document.getElementById('tuner-canvas');
+const ctx = canvas.getContext('2d');
+// Adjust for the new canvas size (center and radius)
+const canvasCenterX = 200;  // Half of the 400px width
+const canvasCenterY = 200;  // Half of the 400px height
+const dialRadius = 160;     // Slightly smaller than the canvas
+
+
+const chimeSound = document.getElementById('chime-sound');
+const stringLabels = {
+    "A3": document.getElementById('string-A3'),
+    "D4": document.getElementById('string-D4'),
+    "F#4": document.getElementById('string-F#4'),
+    "B3": document.getElementById('string-B3')
+};
+
+// Keep track of which strings have been tuned
+const tunedStrings = {
+    "A3": false,
+    "D4": false,
+    "F#4": false,
+    "B3": false
+};
+
+const progressBars = {
+    "A3": document.getElementById('progress-A3'),
+    "D4": document.getElementById('progress-D4'),
+    "F#4": document.getElementById('progress-F#4'),
+    "B3": document.getElementById('progress-B3')
+};
+
+
+// Function to draw the dial and needle
+function drawDial(centsOff) {
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw the dial circle
+    ctx.beginPath();
+    ctx.arc(canvasCenterX, canvasCenterY, dialRadius, 0, 2 * Math.PI);  // Use new center and radius
+    ctx.stroke();
+
+    // Draw the tick marks on the dial
+    for (let i = -50; i <= 50; i += 10) {  // Ranges from -50 cents to +50 cents
+        const angle = (i + 90) * Math.PI / 180;  // Convert degree to radians
+        const x1 = canvasCenterX + (dialRadius - 20) * Math.cos(angle);  // Start of the tick mark
+        const y1 = canvasCenterY + (dialRadius - 20) * Math.sin(angle);
+        const x2 = canvasCenterX + dialRadius * Math.cos(angle);  // End of the tick mark
+        const y2 = canvasCenterY + dialRadius * Math.sin(angle);
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+
+    // Draw the needle based on how many cents off the detected frequency is
+    drawNeedle(centsOff);
+}
+
+// Function to draw the needle on the dial
+function drawNeedle(centsOff) {
+    const angle = (centsOff + 90) * Math.PI / 180;  // Convert degree to radians
+    const needleLength = dialRadius - 40;  // Set needle length smaller than dial radius
+    const x = canvasCenterX + needleLength * Math.cos(angle);
+    const y = canvasCenterY + needleLength * Math.sin(angle);
+
+    ctx.beginPath();
+    ctx.moveTo(canvasCenterX, canvasCenterY);  // Start from the center
+    ctx.lineTo(x, y);  // Draw the needle
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+}
 
 function detectPitch() {
     analyser.getFloatTimeDomainData(dataArray);  // Get audio data from the microphone
 
-    // Perform auto-correlation to detect frequency
     const frequency = autoCorrelate(dataArray, audioContext.sampleRate);
 
     if (frequency !== -1) {
+        const result = getStringAndTuningStatus(frequency);
 
-        const averagedFrequency = calculateMovingAverage(frequency);  // Use the moving average
+        // Only update the UI if the target frequency is valid and greater than 0
+        if (result.targetFrequency > 0) {
+            lastValidFrequency = frequency;  // Store the last valid frequency
+            lastValidTargetFrequency = result.targetFrequency;  // Store the last valid target frequency
 
-        const result = getStringAndTuningStatus(averagedFrequency);
+            // Update the frequency and note display
+            frequencyDisplay.innerText = frequency.toFixed(2);
+            noteDisplay.innerText = `${result.string}: ${result.status}`;
 
-        frequencyDisplay.innerText = averagedFrequency.toFixed(2);  // Update frequency display
-        noteDisplay.innerText = `${result.string}: ${result.status}`;
-        // noteDisplay.innerText = frequencyToNote(frequency); // Update note display
+            // Calculate and display cents off
+            const centsOff = getCentsOff(frequency, result.targetFrequency);
+            drawDial(centsOff);  // Move the needle based on centsOff
+
+             // Update progress bar based on how close the pitch is
+            const progressValue = 100 - Math.min(100, Math.abs(centsOff) * 2);  // Convert centsOff to percentage
+            progressBars[result.string].value = progressValue;
+ 
+
+
+            // Check the tuning status and update label color based on "in tune" status
+            if (result.status === "In tune" && !tunedStrings[result.string]) {
+                tunedStrings[result.string] = true;  // Mark string as tuned
+                stringLabels[result.string].classList.add('tuned');  // Change label to green
+                chimeSound.play();  // Play the chime sound
+                console.log(`String ${result.string} is tuned`);
+            }
+        } else if (lastValidFrequency !== null && lastValidTargetFrequency !== null) {
+            // If the current frequency is invalid, fall back to the last valid one
+            const centsOff = getCentsOff(lastValidFrequency, lastValidTargetFrequency);
+            drawDial(centsOff);  // Keep the needle in place
+        }
+    } else if (lastValidFrequency !== null && lastValidTargetFrequency !== null) {
+        // If no pitch is detected, maintain the last valid frequency and needle position
+        const centsOff = getCentsOff(lastValidFrequency, lastValidTargetFrequency);
+        drawDial(centsOff);  // Keep the needle steady
     } else {
         frequencyDisplay.innerText = "0";
         noteDisplay.innerText = "N/A";
+        drawDial(0);  // Reset the needle if no valid frequency is available
     }
 
-    // Call detectPitch again for real-time analysis
     if (isTuning) {
         requestAnimationFrame(detectPitch);
     }
+}
+
+// Function to calculate how many cents off the frequency is
+function getCentsOff(frequency, targetFrequency) {
+
+   // console.log("Freq: " + frequency);
+    //console.log("target: " + targetFrequency)
+
+    if (frequency <= 0 || targetFrequency <= 0 || frequency > 1000) {
+        return 0;  // Ignore invalid or extremely high frequencies
+    }
+    return 1200 * Math.log2(frequency / targetFrequency);
 }
 
 // Function to calculate the moving average of the buffer
@@ -64,6 +181,9 @@ async function startTuning() {
     }
     isTuning = true;
 
+    startButton.style.display = 'none';  // Hide Start button
+    stopButton.style.display = 'inline';  // Show Stop button
+
     // Initialize AudioContext
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     
@@ -73,13 +193,19 @@ async function startTuning() {
         
         // Create a MediaStreamAudioSourceNode from the microphone input
         microphone = audioContext.createMediaStreamSource(stream);
+
+        const lowPassFilter = audioContext.createBiquadFilter();
+        lowPassFilter.type = "lowpass";
+        lowPassFilter.frequency.value = 300;  // Cutoff frequency: only allow frequencies below 300Hz
         
         // Create an AnalyserNode
         analyser = audioContext.createAnalyser();
-        analyser.fftSize = 2048;  // Increase this for better frequency resolution
+        analyser.fftSize = bufferLength;  // Increase this for better frequency resolution
         
-        // Connect the microphone input to the analyser
-        microphone.connect(analyser);
+        // Connect the microphone input to the low-pass filter, then to the analyser
+        microphone.connect(lowPassFilter);
+        lowPassFilter.connect(analyser);  // Filtered signal goes to the analyser
+
         detectPitch();  // Start pitch detection
         // Log success
         console.log("Microphone connected, audio context running.");
@@ -89,6 +215,31 @@ async function startTuning() {
         alert("Microphone access denied.");
         isTuning = false;
     }
+}
+
+// Function to stop tuning
+function stopTuning() {
+    if (!isTuning) {
+        return;  // Already stopped
+    }
+    isTuning = false;
+
+    startButton.style.display = 'inline';  // Show Start button
+    stopButton.style.display = 'none';  // Hide Stop button
+
+    if (audioContext) {
+        audioContext.close();  // Close the audio context to stop processing
+    }
+
+    frequencyDisplay.innerText = "0";  // Reset frequency display
+    noteDisplay.innerText = "N/A";  // Reset note display
+    drawDial(0);  // Reset the dial to center
+
+    // Reset all string labels back to gray
+    Object.keys(tunedStrings).forEach(string => {
+        stringLabels[string].classList.remove('tuned');  // Remove green color
+        tunedStrings[string] = false;  // Mark all strings as untuned
+    });
 }
 
 // Auto-correlation function to estimate pitch from time-domain data
@@ -163,7 +314,7 @@ function getStringAndTuningStatus(frequency) {
     string = "B3";
     targetFrequency = 246.94;
 } else {
-    return { string: "N/A", status: "Out of range" };
+    return { string: "N/A", targetFrequency: 0, status: "Out of range" };
 }
     // Calculate the difference between detected frequency and target
     difference = frequency - targetFrequency;
@@ -178,8 +329,32 @@ function getStringAndTuningStatus(frequency) {
         status = "In tune";
     }
 
-    return { string, status };
+    return { string, targetFrequency, status };
 }
 
 // Event listener for the Start button
 startButton.addEventListener('click', startTuning);
+stopButton.addEventListener('click', stopTuning);
+
+
+
+// Function to resize the canvas for high DPI screens
+function resizeCanvasForHighDPI() {
+    const dpr = window.devicePixelRatio || 1;
+    const canvas = document.getElementById('tuner-canvas');
+    
+    // Set the canvas dimensions based on the device pixel ratio
+    canvas.width = 400 * dpr;
+    canvas.height = 400 * dpr;
+    
+    // Scale the drawing context so everything is drawn correctly
+    ctx.scale(dpr, dpr);
+
+    // Set the CSS dimensions (logical pixels, not device pixels)
+    canvas.style.width = '400px';
+    canvas.style.height = '400px';
+}
+
+resizeCanvasForHighDPI();
+
+drawDial(0);
