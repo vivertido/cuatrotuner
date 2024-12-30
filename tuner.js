@@ -1,4 +1,5 @@
 // Select the Start button and output elements
+ 
 const startButton = document.getElementById('start-button');
 const stopButton = document.getElementById('stop-button');
 const frequencyDisplay = document.getElementById('frequency-value');
@@ -7,6 +8,16 @@ const noteDisplay = document.getElementById('note-value');
 // Initialize frequency buffer for moving average (store the last few frequency values)
 const frequencyBuffer = [];
 const bufferSize = 5;  // Number of values to average
+
+
+
+////////////
+//   
+//   Frequencies:
+//
+//    A3: 220      B3:  293.66   D4:  369.99   F#4: 246.94
+//
+/////////////
 
 // Initialize the AudioContext and other variables
 let audioContext;
@@ -112,9 +123,10 @@ function detectPitch() {
 
             // Calculate and display cents off
             const centsOff = getCentsOff(frequency, result.targetFrequency);
-            drawDial(centsOff);  // Move the needle based on centsOff
 
-             // Update progress bar based on how close the pitch is
+            drawDial(centsOff);  // Use the canvas-based dial instead
+
+            // Update progress bar based on how close the pitch is
             const progressValue = 100 - Math.min(100, Math.abs(centsOff) * 2);  // Convert centsOff to percentage
             progressBars[result.string].value = progressValue;
  
@@ -146,6 +158,20 @@ function detectPitch() {
         requestAnimationFrame(detectPitch);
     }
 }
+
+function updateDial(centsOff) {
+    const dial = document.getElementById('dial-container');
+
+    // Calculate angle for the gradient based on centsOff (range: -50 to 50)
+    const angle = (centsOff + 50) * 1.8;  // Convert centsOff to degrees (180 degrees range)
+
+    // Dynamically update the conic-gradient of the dial
+    dial.style.background = `conic-gradient(
+        green 0deg ${angle}deg,
+        gray ${angle}deg 360deg
+    )`;
+}
+
 
 // Function to calculate how many cents off the frequency is
 function getCentsOff(frequency, targetFrequency) {
@@ -358,3 +384,4 @@ function resizeCanvasForHighDPI() {
 resizeCanvasForHighDPI();
 
 drawDial(0);
+ 

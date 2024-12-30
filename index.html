@@ -37,6 +37,32 @@
             border: 1px solid #ccc;
         }
 
+        .dial {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: conic-gradient(
+                lightgray 0deg 90deg,
+                gray 90deg 180deg,
+                gray 180deg 270deg,
+                lightgray 270deg 360deg
+            );
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .dial::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background-color: #111;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+        }
+
         .string-label {
         font-size: 1.8rem;
         margin: 0 20px;
@@ -64,6 +90,9 @@
     </div>
 
     <canvas id="tuner-canvas" width="400" height="400"></canvas>
+
+    <!-- <div class="dial" id="dial-container"></div> -->
+
 
 <!-- Labels for the cuatro strings -->
 <div id="string-labels" style="margin-top: 20px;">
